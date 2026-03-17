@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShopWebStore</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .text-coral  { color: #ff5c62; }
+    .bg-coral    { background-color: #ff5c62; }
+    .border-coral{ border-color: #ff5c62; }
+    .hover\:bg-coral-dark:hover { background-color: #ee4b51; }
+    .cart-badge  { animation: pop .2s ease; }
+    @keyframes pop { 0%{transform:scale(1.4)} 100%{transform:scale(1)} }
+    .fade-in     { animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+    .slide-in    { animation: slideIn .3s ease; }
+    @keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+  </style>
+</head>
+<body class="bg-white text-slate-900 selection:bg-red-100 selection:text-coral">
+
+  {% include 'components/header.html' %}
+  {% include 'components/cart_drawer.html' %}
+
+  <main class="flex-grow bg-white">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+    {% include 'components/footer.html' %}
+  {% endblock %}
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] hidden">
+    <div class="bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-3">
+      <i class="fa fa-check-circle text-green-400"></i>
+      <span id="toast-msg">Đã thêm vào giỏ!</span>
+    </div>
+  </div>
+
+  <!-- Global state & helpers -->
+  <script>
+    // ── Global state ────────────────────────────────────────────
+    window.CART  = JSON.parse(localStorage.getItem('cart')  || '[]');
+    window.TOKEN = localStorage.getItem('shop_token') || '';
+    window.USER  = JSON.parse(localStorage.getItem('shop_user') || 'null');
+    const API    = '/api';
+
+    // ── Persist helpers ─────────────────────────────────────────
+    function saveCart()  { localStorage.setItem('cart',       JSON.stringify(window.CART)); }
+    function saveUser(u) { localStorage.setItem('shop_user',  JSON.stringify(u)); window.USER = u; }
+    function saveToken(t){ localStorage.setItem('shop_token', t); window.TOKEN = t; }
+
+    // ── Cart badge ───────────────────────────────────────────────
+    function updateCartBadge() {
+      const total = window.CART.reduce((s,i)=>s+i.quantity, 0);
+      document.querySelectorAll('.cart-count').forEach(el => {
+        el.textContent = total;
+        el.classList.toggle('hidden', total === 0);
+      });
+    }
+
+    // ── Toast ────────────────────────────────────────────────────
+    function showToast(msg, icon='check-circle', color='text-green-400') {
+      const el  = document.getElementById('toast');
+      const msg_el = document.getElementById('toast-msg');
+      const ico = el.querySelector('i');
+      msg_el.textContent = msg;
+      ico.className = `fa fa-${icon} ${color}`;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 2500);
+    }
+
+    // ── Auth helpers ─────────────────────────────────────────────
+    function authHeaders() {
+      return { 'Content-Type': 'application/json',
+               ...(window.TOKEN ? { Authorization: `Bearer ${window.TOKEN}` } : {}) };
+    }
+
+    // ── Add to cart ──────────────────────────────────────────────
+    function addToCart(product, qty=1) {
+      const stock = product.stock || 0;
+      if (stock <= 0) { showToast('Món này đã hết!', 'times-circle', 'text-red-400'); return; }
+      const idx = window.CART.findIndex(i => i.product.id === product.id);
+      if (idx >= 0) {
+        const newQty = window.CART[idx].quantity + qty;
+        if (newQty > stock) { showToast(`Chỉ còn ${stock} phần!`, 'exclamation-circle', 'text-yellow-400'); return; }
+        window.CART[idx].quantity = newQty;
+      } else {
+        window.CART.push({ product, quantity: qty });
+      }
+      saveCart();
+      updateCartBadge();
+      renderCartDrawer();
+      showToast(`Đã thêm "${product.name}" vào giỏ!`);
+      openCart();
+    }
+
+    // ── Cart drawer ──────────────────────────────────────────────
+    function openCart()  { document.getElementById('cart-overlay').classList.remove('hidden'); }
+    function closeCart() { document.getElementById('cart-overlay').classList.add('hidden'); }
+
+    function renderCartDrawer() {
+      const list = document.getElementById('cart-items-list');
+      const empty = document.getElementById('cart-empty');
+      const footer = document.getElementById('cart-footer');
+      if (!list) return;
+      if (window.CART.length === 0) {
+        list.innerHTML = '';
+        empty?.classList.remove('hidden');
+        footer?.classList.add('hidden');
+        return;
+      }
+      empty?.classList.add('hidden');
+      footer?.classList.remove('hidden');
+      const subtotal = window.CART.reduce((s,i) => s + (i.product.salePrice||i.product.price)*i.quantity, 0);
+      list.innerHTML = window.CART.map((item,idx) => `
+        <div class="flex gap-4 fade-in">
+          <div class="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-gray-100">
+            <img src="${item.product.image}" class="w-full h-full object-cover" />
+          </div>
+          <div class="flex-grow">
+            <div class="flex justify-between mb-1">
+              <h3 class="font-bold text-slate-900 text-sm line-clamp-1">${item.product.name}</h3>
+              <button onclick="removeFromCart(${idx})" class="text-slate-300 hover:text-red-500 ml-2">
+                <i class="fa fa-trash text-xs"></i>
+              </button>
+            </div>
+            <p class="text-coral font-bold text-sm mb-2">${(item.product.salePrice||item.product.price).toLocaleString('vi-VN')}đ</p>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center bg-slate-50 rounded-lg p-1">
+                <button onclick="updateCartQty(${idx},-1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-white rounded text-xs">−</button>
+                <span class="w-8 text-center text-xs font-bold">${item.quantity}</span>
+                <button onclick="updateCartQty(${idx},1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-white rounded text-xs">+</button>
+              </div>
+              <span class="text-xs font-bold text-slate-400">${((item.product.salePrice||item.product.price)*item.quantity).toLocaleString('vi-VN')}đ</span>
+            </div>
+          </div>
+        </div>`).join('');
+      document.getElementById('cart-subtotal').textContent = subtotal.toLocaleString('vi-VN') + 'đ';
+    }
+
+    function removeFromCart(idx) {
+      window.CART.splice(idx, 1); saveCart(); updateCartBadge(); renderCartDrawer();
+    }
+
+    function updateCartQty(idx, delta) {
+      const item  = window.CART[idx];
+      const stock = item.product.stock || 99;
+      const newQ  = item.quantity + delta;
+      if (newQ < 1) { removeFromCart(idx); return; }
+      if (newQ > stock) { showToast(`Tối đa ${stock} phần!`, 'exclamation-circle', 'text-yellow-400'); return; }
+      item.quantity = newQ;
+      saveCart(); updateCartBadge(); renderCartDrawer();
+    }
+
+    // ── Update header based on auth state ────────────────────────
+    function updateHeader() {
+      const guestEl = document.getElementById('header-guest');
+      const userEl  = document.getElementById('header-user');
+      const nameEl  = document.getElementById('header-username');
+      const roleEl  = document.getElementById('header-role');
+      const avatarEl= document.getElementById('header-avatar');
+      const adminLink = document.getElementById('nav-admin');
+      if (window.USER) {
+        guestEl?.classList.add('hidden');
+        userEl?.classList.remove('hidden');
+        if (nameEl)   nameEl.textContent  = window.USER.name;
+        if (roleEl)   roleEl.textContent  = window.USER.role === 'admin' ? 'Quản trị viên' : 'Thành viên';
+        if (avatarEl) avatarEl.src = window.USER.avatar || `https://ui-avatars.com/api/?name=${window.USER.name}&background=ff5c62&color=fff`;
+        if (adminLink) adminLink.classList.toggle('hidden', window.USER.role !== 'admin');
+      } else {
+        guestEl?.classList.remove('hidden');
+        userEl?.classList.add('hidden');
+        if (adminLink) adminLink.classList.add('hidden');
+      }
+    }
+
+    function logout() {
+      window.TOKEN = ''; window.USER = null;
+      localStorage.removeItem('shop_token');
+      localStorage.removeItem('shop_user');
+      window.location.href = '/';
+    }
+
+    // ── Init ─────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      updateCartBadge();
+      renderCartDrawer();
+      updateHeader();
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

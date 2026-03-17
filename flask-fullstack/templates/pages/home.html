@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Hero -->
+<section class="relative bg-gradient-to-br from-orange-50 via-red-50 to-white overflow-hidden py-20 md:py-32">
+  <div class="absolute inset-0 pointer-events-none select-none opacity-20">
+    <div class="absolute top-10 right-10 text-9xl">🍷</div>
+    <div class="absolute bottom-10 left-20 text-7xl">🧁</div>
+    <div class="absolute top-1/2 left-1/3 text-6xl">🫒</div>
+  </div>
+  <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center gap-12">
+    <div class="flex-1 text-center md:text-left">
+      <span class="inline-block bg-coral/10 text-coral font-bold text-xs px-4 py-1.5 rounded-full mb-6 uppercase tracking-wider">🌟 Khám phá hương vị mới</span>
+      <h1 class="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight mb-6">
+        Ẩm thực <span class="text-coral">đỉnh cao</span><br>cho mọi căn bếp
+      </h1>
+      <p class="text-slate-500 text-lg mb-8 max-w-xl">
+        Hàng trăm nguyên liệu, gia vị và thực phẩm cao cấp được chọn lọc kỹ càng — giao nhanh tận tay bạn.
+      </p>
+      <div class="flex flex-wrap gap-3 justify-center md:justify-start">
+        <a href="/products" class="bg-coral text-white font-bold px-8 py-3.5 rounded-2xl hover:bg-coral-dark transition shadow-lg shadow-red-100">
+          Mua sắm ngay →
+        </a>
+        <a href="/blog" class="border-2 border-slate-200 text-slate-700 font-bold px-8 py-3.5 rounded-2xl hover:border-coral hover:text-coral transition">
+          Đọc blog
+        </a>
+      </div>
+    </div>
+    <div class="flex-1 flex justify-center">
+      <div class="relative w-80 h-80">
+        <div class="absolute inset-0 bg-gradient-to-br from-coral/20 to-orange-200/30 rounded-full"></div>
+        <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80"
+             class="w-full h-full object-cover rounded-full p-4 shadow-2xl" alt="hero food" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="max-w-7xl mx-auto px-4 -mt-6 mb-16">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    {% for stat in [('500+','Sản phẩm','🛍️'),('10k+','Khách hàng','😊'),('50+','Danh mục','📦'),('4.9','Đánh giá TB','⭐')] %}
+    <div class="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition">
+      <div class="text-2xl mb-1">{{ stat[2] }}</div>
+      <div class="text-2xl font-extrabold text-slate-900">{{ stat[0] }}</div>
+      <div class="text-xs text-slate-400 font-medium">{{ stat[1] }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Featured products -->
+<section class="max-w-7xl mx-auto px-4 mb-20">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h2 class="text-2xl font-extrabold text-slate-900">Sản phẩm nổi bật</h2>
+      <p class="text-slate-400 text-sm mt-1">Được yêu thích nhất tuần này</p>
+    </div>
+    <a href="/products" class="text-coral font-bold text-sm hover:underline">Xem tất cả →</a>
+  </div>
+  <div id="featured-products" class="grid grid-cols-2 md:grid-cols-4 gap-5">
+    {% for i in range(4) %}
+    <div class="animate-pulse bg-gray-100 rounded-2xl h-64"></div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Categories -->
+<section class="bg-gray-50 py-16 mb-20">
+  <div class="max-w-7xl mx-auto px-4">
+    <h2 class="text-2xl font-extrabold text-slate-900 mb-8 text-center">Danh mục</h2>
+    <div id="categories-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+  </div>
+</section>
+
+<!-- Blog preview -->
+<section class="max-w-7xl mx-auto px-4 mb-20">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h2 class="text-2xl font-extrabold text-slate-900">Blog ẩm thực</h2>
+      <p class="text-slate-400 text-sm mt-1">Công thức & mẹo nấu ăn</p>
+    </div>
+    <a href="/blog" class="text-coral font-bold text-sm hover:underline">Xem tất cả →</a>
+  </div>
+  <div id="blog-preview" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadFeatured() {
+  try {
+    const res  = await fetch('/api/products?limit=8&sort=popular');
+    const data = await res.json();
+    const products = data.products || data;
+    document.getElementById('featured-products').innerHTML = products.slice(0,8).map(p => productCard(p)).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadCategories() {
+  try {
+    const res  = await fetch('/api/categories');
+    const cats = await res.json();
+    const colors = ['bg-orange-50 text-orange-600','bg-red-50 text-red-600','bg-emerald-50 text-emerald-600','bg-blue-50 text-blue-600','bg-purple-50 text-purple-600','bg-yellow-50 text-yellow-600','bg-pink-50 text-pink-600','bg-teal-50 text-teal-600'];
+    document.getElementById('categories-grid').innerHTML = cats.map((c,i) => `
+      <a href="/products?category=${c.id}" class="group flex flex-col items-center gap-3 p-6 bg-white rounded-2xl border border-gray-100 hover:border-coral hover:shadow-md transition">
+        <div class="w-14 h-14 rounded-2xl ${colors[i%colors.length].split(' ')[0]} flex items-center justify-center text-2xl">
+          ${c.image || '🍽️'}
+        </div>
+        <span class="font-bold text-sm text-slate-700 group-hover:text-coral transition">${c.name}</span>
+      </a>`).join('');
+  } catch(e) {}
+}
+
+async function loadBlogPreview() {
+  try {
+    const res  = await fetch('/api/blog?limit=3');
+    const data = await res.json();
+    const posts = data.posts || data;
+    document.getElementById('blog-preview').innerHTML = posts.slice(0,3).map(p => `
+      <a href="/blog/${p.id}" class="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition">
+        <div class="h-44 overflow-hidden">
+          <img src="${p.image || 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&q=80'}"
+               class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+        </div>
+        <div class="p-5">
+          <span class="text-xs bg-coral/10 text-coral font-bold px-2 py-1 rounded-lg">${p.category||'Ẩm thực'}</span>
+          <h3 class="font-extrabold text-slate-900 mt-3 mb-2 line-clamp-2 group-hover:text-coral transition">${p.title}</h3>
+          <p class="text-slate-400 text-xs line-clamp-2">${p.summary||''}</p>
+        </div>
+      </a>`).join('');
+  } catch(e) {}
+}
+
+function productCard(p) {
+  const price = p.salePrice || p.price;
+  const hasDiscount = p.salePrice && p.salePrice < p.price;
+  return `
+    <div class="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="window.location='/products/${p.id}'">
+      <div class="relative h-44 overflow-hidden bg-gray-50">
+        <img src="${p.image}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+        ${hasDiscount ? `<span class="absolute top-3 left-3 bg-coral text-white text-xs font-black px-2 py-1 rounded-lg">-${Math.round((1-p.salePrice/p.price)*100)}%</span>` : ''}
+        <button onclick="event.stopPropagation(); addToCart(${JSON.stringify(p).replace(/"/g,'&quot;')})"
+                class="absolute bottom-3 right-3 w-9 h-9 bg-coral text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg">
+          <i class="fa fa-plus text-xs"></i>
+        </button>
+      </div>
+      <div class="p-4">
+        <h3 class="font-bold text-sm text-slate-900 line-clamp-1 mb-1">${p.name}</h3>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-coral text-sm">${price.toLocaleString('vi-VN')}đ</span>
+          ${hasDiscount ? `<span class="text-slate-300 text-xs line-through">${p.price.toLocaleString('vi-VN')}đ</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+loadFeatured();
+loadCategories();
+loadBlogPreview();
+</script>
+{% endblock %}

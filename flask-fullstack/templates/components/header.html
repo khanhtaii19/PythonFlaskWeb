@@ -1,0 +1,61 @@
+<header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2 font-extrabold text-xl text-slate-900">
+      <span class="bg-coral text-white rounded-xl px-3 py-1 text-sm font-black tracking-wide">GOURMET</span>
+      <span class="text-coral">Shop</span>
+    </a>
+
+    <!-- Nav -->
+    <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600">
+      <a href="/"        class="hover:text-coral transition">Trang chủ</a>
+      <a href="/products" class="hover:text-coral transition">Sản phẩm</a>
+      <a href="/blog"    class="hover:text-coral transition">Blog</a>
+      <a href="/admin"   id="nav-admin" class="hover:text-coral transition hidden">Admin</a>
+    </nav>
+
+    <!-- Right actions -->
+    <div class="flex items-center gap-3">
+      <!-- Search -->
+      <a href="/products" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-slate-500">
+        <i class="fa fa-search text-sm"></i>
+      </a>
+
+      <!-- Cart -->
+      <button onclick="openCart()" class="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-slate-600">
+        <i class="fa fa-shopping-bag text-sm"></i>
+        <span class="cart-count hidden absolute -top-1 -right-1 w-5 h-5 bg-coral text-white text-[10px] font-black rounded-full flex items-center justify-center cart-badge">0</span>
+      </button>
+
+      <!-- Guest buttons -->
+      <div id="header-guest" class="flex items-center gap-2">
+        <a href="/login"    class="text-sm font-bold text-slate-600 hover:text-coral px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Đăng nhập</a>
+        <a href="/register" class="text-sm font-bold text-white bg-coral hover:bg-coral-dark px-4 py-1.5 rounded-xl transition">Đăng ký</a>
+      </div>
+
+      <!-- User menu -->
+      <div id="header-user" class="hidden relative group">
+        <button class="flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-gray-50 transition">
+          <img id="header-avatar" src="" class="w-8 h-8 rounded-full object-cover" />
+          <div class="text-left hidden sm:block">
+            <p id="header-username" class="text-xs font-bold text-slate-900 leading-tight"></p>
+            <p id="header-role"     class="text-[10px] text-slate-400 leading-tight"></p>
+          </div>
+          <i class="fa fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
+        </button>
+        <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+          <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-gray-50">
+            <i class="fa fa-user w-4 text-slate-400"></i> Tài khoản
+          </a>
+          <a href="/orders"  class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-gray-50">
+            <i class="fa fa-receipt w-4 text-slate-400"></i> Đơn hàng
+          </a>
+          <hr class="my-1 border-gray-100"/>
+          <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50">
+            <i class="fa fa-sign-out-alt w-4"></i> Đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

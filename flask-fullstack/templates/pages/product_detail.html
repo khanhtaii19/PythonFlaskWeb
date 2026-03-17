@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <!-- Breadcrumb -->
+  <nav class="text-sm text-slate-400 mb-8 flex items-center gap-2">
+    <a href="/" class="hover:text-coral">Trang chủ</a>
+    <i class="fa fa-chevron-right text-xs"></i>
+    <a href="/products" class="hover:text-coral">Sản phẩm</a>
+    <i class="fa fa-chevron-right text-xs"></i>
+    <span id="breadcrumb-name" class="text-slate-600 font-semibold"></span>
+  </nav>
+
+  <div id="product-loader" class="grid grid-cols-1 md:grid-cols-2 gap-12">
+    <div class="animate-pulse bg-gray-100 rounded-3xl h-96"></div>
+    <div class="space-y-4">
+      <div class="animate-pulse bg-gray-100 rounded h-8 w-3/4"></div>
+      <div class="animate-pulse bg-gray-100 rounded h-5 w-1/2"></div>
+      <div class="animate-pulse bg-gray-100 rounded h-20"></div>
+    </div>
+  </div>
+
+  <div id="product-detail" class="hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+      <!-- Image -->
+      <div class="relative">
+        <div class="rounded-3xl overflow-hidden bg-gray-50 aspect-square">
+          <img id="p-image" src="" class="w-full h-full object-cover" />
+        </div>
+        <span id="p-badge" class="hidden absolute top-5 left-5 bg-coral text-white text-sm font-black px-3 py-1 rounded-xl"></span>
+      </div>
+
+      <!-- Info -->
+      <div class="flex flex-col gap-5">
+        <div>
+          <span id="p-category" class="text-xs bg-orange-50 text-orange-600 font-bold px-3 py-1 rounded-full"></span>
+          <h1 id="p-name" class="text-3xl font-extrabold text-slate-900 mt-3 leading-tight"></h1>
+        </div>
+
+        <div class="flex items-end gap-4">
+          <span id="p-sale-price" class="text-4xl font-extrabold text-coral"></span>
+          <span id="p-orig-price" class="hidden text-xl text-slate-300 line-through pb-1"></span>
+        </div>
+
+        <p id="p-description" class="text-slate-500 leading-relaxed text-sm"></p>
+
+        <!-- Stock & weight -->
+        <div class="flex flex-wrap gap-4 text-sm">
+          <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2">
+            <i class="fa fa-box text-slate-400"></i>
+            <span id="p-stock" class="font-semibold text-slate-700"></span>
+          </div>
+          <div id="p-weight-wrap" class="hidden flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2">
+            <i class="fa fa-weight text-slate-400"></i>
+            <span id="p-weight" class="font-semibold text-slate-700"></span>
+          </div>
+        </div>
+
+        <!-- Quantity + Add -->
+        <div class="flex items-center gap-4">
+          <div class="flex items-center bg-gray-100 rounded-2xl p-1">
+            <button onclick="changeQty(-1)" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white font-bold text-slate-600 text-lg">−</button>
+            <span id="qty-display" class="w-12 text-center font-extrabold text-slate-900">1</span>
+            <button onclick="changeQty(1)"  class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white font-bold text-slate-600 text-lg">+</button>
+          </div>
+          <button id="add-to-cart-btn" onclick="handleAddToCart()"
+                  class="flex-1 bg-coral text-white font-bold py-3.5 px-6 rounded-2xl hover:bg-coral-dark transition shadow-lg shadow-red-100 flex items-center justify-center gap-2">
+            <i class="fa fa-shopping-cart"></i> Thêm vào giỏ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Related products -->
+    <div class="mt-20">
+      <h2 class="text-xl font-extrabold text-slate-900 mb-6">Sản phẩm liên quan</h2>
+      <div id="related-products" class="grid grid-cols-2 md:grid-cols-4 gap-5"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentProduct = null;
+let qty = 1;
+const productId = window.location.pathname.split('/').pop();
+
+async function loadProduct() {
+  try {
+    const res = await fetch(`/api/products/${productId}`);
+    const p   = await res.json();
+    currentProduct = p;
+    const price = p.salePrice || p.price;
+    const hasDiscount = p.salePrice && p.salePrice < p.price;
+
+    document.getElementById('breadcrumb-name').textContent = p.name;
+    document.getElementById('p-image').src = p.image;
+    document.getElementById('p-name').textContent = p.name;
+    document.getElementById('p-description').textContent = p.description || '';
+    document.getElementById('p-sale-price').textContent = price.toLocaleString('vi-VN') + 'đ';
+    document.getElementById('p-stock').textContent = p.stock > 0 ? `Còn ${p.stock} sản phẩm` : 'Hết hàng';
+    if (p.category) document.getElementById('p-category').textContent = p.category;
+    if (p.weight) {
+      document.getElementById('p-weight').textContent = p.weight;
+      document.getElementById('p-weight-wrap').classList.remove('hidden');
+    }
+    if (hasDiscount) {
+      document.getElementById('p-orig-price').textContent = p.price.toLocaleString('vi-VN') + 'đ';
+      document.getElementById('p-orig-price').classList.remove('hidden');
+      const discount = Math.round((1 - p.salePrice / p.price) * 100);
+      document.getElementById('p-badge').textContent = `-${discount}%`;
+      document.getElementById('p-badge').classList.remove('hidden');
+    }
+    if (p.stock <= 0) {
+      const btn = document.getElementById('add-to-cart-btn');
+      btn.textContent = 'Hết hàng';
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    document.getElementById('product-loader').classList.add('hidden');
+    document.getElementById('product-detail').classList.remove('hidden');
+
+    loadRelated(p.categoryId);
+  } catch(e) { console.error(e); }
+}
+
+async function loadRelated(categoryId) {
+  try {
+    const res  = await fetch(`/api/products?categoryId=${categoryId}&limit=8`);
+    const data = await res.json();
+    const products = (data.products || data).filter(p => String(p.id) !== String(productId)).slice(0,4);
+    document.getElementById('related-products').innerHTML = products.map(p => `
+      <div class="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition cursor-pointer" onclick="window.location='/products/${p.id}'">
+        <div class="h-36 overflow-hidden"><img src="${p.image}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500"/></div>
+        <div class="p-3">
+          <h3 class="font-bold text-xs text-slate-900 line-clamp-2 mb-1">${p.name}</h3>
+          <span class="font-extrabold text-coral text-sm">${(p.salePrice||p.price).toLocaleString('vi-VN')}đ</span>
+        </div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+function changeQty(delta) {
+  const stock = currentProduct?.stock || 99;
+  qty = Math.max(1, Math.min(stock, qty + delta));
+  document.getElementById('qty-display').textContent = qty;
+}
+
+function handleAddToCart() {
+  if (!currentProduct) return;
+  addToCart(currentProduct, qty);
+}
+
+loadProduct();
+</script>
+{% endblock %}

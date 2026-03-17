@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-10">
+  <div class="flex flex-col md:flex-row gap-8">
+
+    <!-- Sidebar filters -->
+    <aside class="w-full md:w-64 flex-shrink-0">
+      <div class="sticky top-20 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <h3 class="font-extrabold text-slate-900 mb-5">Bộ lọc</h3>
+        <!-- Search -->
+        <div class="mb-5">
+          <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Tìm kiếm</label>
+          <div class="relative">
+            <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+            <input id="search-input" type="text" placeholder="Nhập tên sản phẩm..."
+                   class="w-full pl-8 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-coral" />
+          </div>
+        </div>
+        <!-- Categories -->
+        <div class="mb-5">
+          <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">Danh mục</label>
+          <div id="category-filters" class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700">
+              <input type="radio" name="category" value="" checked class="accent-[#ff5c62]"> Tất cả
+            </label>
+          </div>
+        </div>
+        <!-- Price -->
+        <div class="mb-5">
+          <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">Giá tối đa</label>
+          <input id="price-range" type="range" min="0" max="2000000" step="50000" value="2000000"
+                 class="w-full accent-[#ff5c62]" oninput="document.getElementById('price-label').textContent=Number(this.value).toLocaleString('vi-VN')+'đ'; applyFilters()"/>
+          <p class="text-xs text-coral font-bold mt-1">≤ <span id="price-label">2.000.000đ</span></p>
+        </div>
+        <!-- Sort -->
+        <div>
+          <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Sắp xếp</label>
+          <select id="sort-select" onchange="applyFilters()"
+                  class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-coral">
+            <option value="popular">Phổ biến nhất</option>
+            <option value="price_asc">Giá tăng dần</option>
+            <option value="price_desc">Giá giảm dần</option>
+            <option value="newest">Mới nhất</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Products grid -->
+    <div class="flex-1">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-extrabold text-slate-900">Tất cả sản phẩm</h1>
+        <span id="product-count" class="text-sm text-slate-400 font-semibold"></span>
+      </div>
+      <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+      <div id="products-loader" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+        {% for i in range(8) %}
+        <div class="animate-pulse bg-gray-100 rounded-2xl h-64"></div>
+        {% endfor %}
+      </div>
+      <div id="no-products" class="hidden text-center py-20">
+        <div class="text-6xl mb-4">🔍</div>
+        <p class="text-slate-400 font-semibold">Không tìm thấy sản phẩm nào</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allProducts = [];
+let debounceTimer;
+
+async function loadProducts() {
+  try {
+    const res  = await fetch('/api/products?limit=100');
+    const data = await res.json();
+    allProducts = data.products || data;
+    document.getElementById('products-loader').remove();
+    applyFilters();
+  } catch(e) { console.error(e); }
+}
+
+async function loadCategories() {
+  try {
+    const res  = await fetch('/api/categories');
+    const cats = await res.json();
+    const container = document.getElementById('category-filters');
+    cats.forEach(c => {
+      container.innerHTML += `
+        <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700">
+          <input type="radio" name="category" value="${c.id}" class="accent-[#ff5c62]" onchange="applyFilters()"> ${c.name}
+        </label>`;
+    });
+  } catch(e) {}
+}
+
+function applyFilters() {
+  const search   = document.getElementById('search-input').value.toLowerCase();
+  const catEl    = document.querySelector('input[name="category"]:checked');
+  const catId    = catEl ? catEl.value : '';
+  const maxPrice = Number(document.getElementById('price-range').value);
+  const sort     = document.getElementById('sort-select').value;
+
+  let filtered = allProducts.filter(p => {
+    const price = p.salePrice || p.price;
+    if (search && !p.name.toLowerCase().includes(search)) return false;
+    if (catId  && String(p.categoryId) !== String(catId))  return false;
+    if (price > maxPrice) return false;
+    return true;
+  });
+
+  if (sort === 'price_asc')  filtered.sort((a,b) => (a.salePrice||a.price)-(b.salePrice||b.price));
+  if (sort === 'price_desc') filtered.sort((a,b) => (b.salePrice||b.price)-(a.salePrice||a.price));
+  if (sort === 'newest')     filtered.sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+
+  document.getElementById('product-count').textContent = `${filtered.length} sản phẩm`;
+  const grid = document.getElementById('products-grid');
+  const none = document.getElementById('no-products');
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    none.classList.remove('hidden');
+  } else {
+    none.classList.add('hidden');
+    grid.innerHTML = filtered.map(p => productCard(p)).join('');
+  }
+}
+
+function productCard(p) {
+  const price = p.salePrice || p.price;
+  const hasDiscount = p.salePrice && p.salePrice < p.price;
+  const safeP = JSON.stringify(p).replace(/"/g,'&quot;');
+  return `
+    <div class="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition">
+      <div class="relative h-44 overflow-hidden bg-gray-50 cursor-pointer" onclick="window.location='/products/${p.id}'">
+        <img src="${p.image}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+        ${hasDiscount ? `<span class="absolute top-3 left-3 bg-coral text-white text-xs font-black px-2 py-1 rounded-lg">-${Math.round((1-p.salePrice/p.price)*100)}%</span>` : ''}
+        ${p.stock<=0 ? `<div class="absolute inset-0 bg-white/70 flex items-center justify-center"><span class="text-xs font-bold text-slate-500">Hết hàng</span></div>` : ''}
+      </div>
+      <div class="p-4">
+        <h3 class="font-bold text-sm text-slate-900 line-clamp-2 mb-2 cursor-pointer hover:text-coral" onclick="window.location='/products/${p.id}'">${p.name}</h3>
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="font-extrabold text-coral text-sm">${price.toLocaleString('vi-VN')}đ</span>
+            ${hasDiscount ? `<span class="block text-slate-300 text-xs line-through">${p.price.toLocaleString('vi-VN')}đ</span>` : ''}
+          </div>
+          <button onclick="addToCart(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(p))}')))"
+                  ${p.stock<=0 ? 'disabled' : ''}
+                  class="w-9 h-9 bg-coral text-white rounded-xl flex items-center justify-center hover:bg-coral-dark transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-red-100">
+            <i class="fa fa-plus text-xs"></i>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Debounce search
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('search-input').addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(applyFilters, 300);
+  });
+
+  // URL param: pre-select category
+  const params = new URLSearchParams(window.location.search);
+  const catParam = params.get('category');
+  if (catParam) {
+    setTimeout(() => {
+      const radio = document.querySelector(`input[name="category"][value="${catParam}"]`);
+      if (radio) { radio.checked = true; applyFilters(); }
+    }, 500);
+  }
+});
+
+loadCategories();
+loadProducts();
+</script>
+{% endblock %}

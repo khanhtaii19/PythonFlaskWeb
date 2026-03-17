@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-10">
+  <h1 class="text-2xl font-extrabold text-slate-900 mb-8">Thanh toán</h1>
+
+  <div id="empty-cart-msg" class="hidden text-center py-20">
+    <div class="text-6xl mb-4">🛒</div>
+    <p class="text-slate-400 font-semibold mb-4">Giỏ hàng của bạn đang trống</p>
+    <a href="/products" class="inline-block bg-coral text-white font-bold px-6 py-2.5 rounded-xl hover:bg-coral-dark transition">Mua sắm ngay</a>
+  </div>
+
+  <div id="checkout-form" class="grid grid-cols-1 md:grid-cols-5 gap-8">
+    <!-- Left: form -->
+    <div class="md:col-span-3 space-y-6">
+      <!-- Shipping info -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+        <h2 class="font-extrabold text-slate-900 mb-5 flex items-center gap-2">
+          <i class="fa fa-map-marker-alt text-coral"></i> Thông tin giao hàng
+        </h2>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs font-bold text-slate-500 mb-1 block">Họ và tên *</label>
+              <input id="ship-name" type="text" placeholder="Nguyễn Văn A"
+                     class="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-coral transition" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-500 mb-1 block">Số điện thoại *</label>
+              <input id="ship-phone" type="tel" placeholder="0900 000 000"
+                     class="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-coral transition" />
+            </div>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">Địa chỉ giao hàng *</label>
+            <input id="ship-address" type="text" placeholder="Số nhà, tên đường, phường/xã..."
+                   class="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-coral transition" />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">Ghi chú</label>
+            <textarea id="ship-note" rows="2" placeholder="Ghi chú cho đơn hàng (không bắt buộc)..."
+                      class="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-coral transition resize-none"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+        <h2 class="font-extrabold text-slate-900 mb-5 flex items-center gap-2">
+          <i class="fa fa-credit-card text-coral"></i> Thanh toán
+        </h2>
+        <div class="space-y-3">
+          {% for method, icon, label in [('cod','fa-money-bill-wave','Thanh toán khi nhận hàng (COD)'),('bank','fa-university','Chuyển khoản ngân hàng'),('momo','fa-wallet','Ví MoMo')] %}
+          <label class="flex items-center gap-4 p-4 border border-gray-200 rounded-xl cursor-pointer hover:border-coral transition group has-[:checked]:border-coral has-[:checked]:bg-coral/5">
+            <input type="radio" name="payment" value="{{ method }}" {% if method=='cod' %}checked{% endif %} class="accent-[#ff5c62]" />
+            <i class="fa {{ icon }} text-coral w-5"></i>
+            <span class="text-sm font-semibold text-slate-700">{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: order summary -->
+    <div class="md:col-span-2">
+      <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm sticky top-20">
+        <h2 class="font-extrabold text-slate-900 mb-5">Đơn hàng</h2>
+        <div id="order-items" class="space-y-4 mb-5 max-h-72 overflow-y-auto pr-1"></div>
+        <hr class="border-gray-100 mb-4"/>
+
+        <!-- Coupon -->
+        <div class="flex gap-2 mb-5">
+          <input id="coupon-input" type="text" placeholder="Mã giảm giá"
+                 class="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-coral transition"/>
+          <button onclick="applyCoupon()" class="bg-slate-100 hover:bg-gray-200 text-slate-700 font-bold text-sm px-4 rounded-xl transition">Áp dụng</button>
+        </div>
+        <div id="coupon-msg" class="hidden text-xs font-semibold mb-3"></div>
+
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between text-slate-500"><span>Tạm tính</span><span id="subtotal-display">0đ</span></div>
+          <div class="flex justify-between text-slate-500"><span>Phí giao hàng</span><span class="text-green-500 font-bold">Miễn phí</span></div>
+          <div id="discount-row" class="hidden flex justify-between text-green-500 font-bold"><span>Giảm giá</span><span id="discount-display"></span></div>
+        </div>
+        <hr class="border-gray-100 my-4"/>
+        <div class="flex justify-between font-extrabold text-lg">
+          <span>Tổng cộng</span><span class="text-coral" id="total-display">0đ</span>
+        </div>
+
+        <div id="order-error" class="hidden mt-3 text-xs text-red-500 font-semibold bg-red-50 rounded-lg px-3 py-2"></div>
+
+        <button onclick="placeOrder()"
+                class="mt-5 w-full bg-coral text-white font-bold py-3.5 rounded-2xl hover:bg-coral-dark transition shadow-lg shadow-red-100">
+          Đặt hàng ngay →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let appliedCoupon = null;
+
+function renderOrderSummary() {
+  if (window.CART.length === 0) {
+    document.getElementById('empty-cart-msg').classList.remove('hidden');
+    document.getElementById('checkout-form').classList.add('hidden');
+    return;
+  }
+  const subtotal = window.CART.reduce((s,i)=>(s+(i.product.salePrice||i.product.price)*i.quantity),0);
+  const discount = appliedCoupon ? Math.round(subtotal * appliedCoupon.discount / 100) : 0;
+  const total    = subtotal - discount;
+
+  document.getElementById('order-items').innerHTML = window.CART.map(item=>`
+    <div class="flex gap-3 items-center">
+      <img src="${item.product.image}" class="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100"/>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-bold text-slate-900 line-clamp-1">${item.product.name}</p>
+        <p class="text-xs text-slate-400">x${item.quantity}</p>
+      </div>
+      <span class="text-xs font-extrabold text-coral">${((item.product.salePrice||item.product.price)*item.quantity).toLocaleString('vi-VN')}đ</span>
+    </div>`).join('');
+
+  document.getElementById('subtotal-display').textContent = subtotal.toLocaleString('vi-VN')+'đ';
+  document.getElementById('total-display').textContent    = total.toLocaleString('vi-VN')+'đ';
+  if (discount > 0) {
+    document.getElementById('discount-row').classList.remove('hidden');
+    document.getElementById('discount-display').textContent = '-'+discount.toLocaleString('vi-VN')+'đ';
+  }
+  // Pre-fill user info
+  if (window.USER) {
+    document.getElementById('ship-name').value = window.USER.name || '';
+  }
+}
+
+async function applyCoupon() {
+  const code = document.getElementById('coupon-input').value.trim().toUpperCase();
+  const msgEl = document.getElementById('coupon-msg');
+  if (!code) return;
+  try {
+    const res  = await fetch('/api/coupons');
+    const coupons = await res.json();
+    const found = coupons.find(c => c.code.toUpperCase() === code && c.isActive);
+    if (found) {
+      appliedCoupon = found;
+      msgEl.textContent = `✓ Áp dụng thành công — giảm ${found.discount}%`;
+      msgEl.className   = 'text-xs font-semibold mb-3 text-green-600';
+      msgEl.classList.remove('hidden');
+      renderOrderSummary();
+    } else {
+      msgEl.textContent = '✗ Mã không hợp lệ hoặc đã hết hạn';
+      msgEl.className   = 'text-xs font-semibold mb-3 text-red-500';
+      msgEl.classList.remove('hidden');
+    }
+  } catch(e) {}
+}
+
+async function placeOrder() {
+  if (!window.TOKEN) { window.location.href = '/login'; return; }
+  const name    = document.getElementById('ship-name').value.trim();
+  const phone   = document.getElementById('ship-phone').value.trim();
+  const address = document.getElementById('ship-address').value.trim();
+  const payment = document.querySelector('input[name="payment"]:checked')?.value || 'cod';
+  const note    = document.getElementById('ship-note').value.trim();
+  const errEl   = document.getElementById('order-error');
+  errEl.classList.add('hidden');
+  if (!name || !phone || !address) { errEl.textContent='Vui lòng điền đầy đủ thông tin giao hàng'; errEl.classList.remove('hidden'); return; }
+
+  const subtotal = window.CART.reduce((s,i)=>(s+(i.product.salePrice||i.product.price)*i.quantity),0);
+  const discount = appliedCoupon ? Math.round(subtotal*appliedCoupon.discount/100) : 0;
+
+  const payload = {
+    items:    window.CART.map(i=>({ productId: i.product.id, quantity: i.quantity, price: i.product.salePrice||i.product.price })),
+    shipping: { name, phone, address, note },
+    payment,
+    subtotal, discount,
+    total:    subtotal - discount,
+    couponCode: appliedCoupon?.code || null
+  };
+
+  try {
+    const res  = await fetch('/api/orders', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.message||'Đặt hàng thất bại'; errEl.classList.remove('hidden'); return; }
+    window.CART = []; saveCart(); updateCartBadge();
+    window.location.href = `/orders?success=1&id=${data.order?.id||''}`;
+  } catch(e) { errEl.textContent='Lỗi kết nối'; errEl.classList.remove('hidden'); }
+}
+
+renderOrderSummary();
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-10">
+  <div id="blog-loader" class="space-y-4">
+    <div class="animate-pulse bg-gray-100 rounded-3xl h-72 mb-6"></div>
+    <div class="animate-pulse bg-gray-100 rounded h-8 w-3/4 mb-4"></div>
+    <div class="animate-pulse bg-gray-100 rounded h-4 w-full mb-2"></div>
+    <div class="animate-pulse bg-gray-100 rounded h-4 w-5/6"></div>
+  </div>
+
+  <article id="blog-article" class="hidden">
+    <nav class="text-sm text-slate-400 mb-6 flex items-center gap-2">
+      <a href="/" class="hover:text-coral">Trang chủ</a>
+      <i class="fa fa-chevron-right text-xs"></i>
+      <a href="/blog" class="hover:text-coral">Blog</a>
+      <i class="fa fa-chevron-right text-xs"></i>
+      <span id="b-breadcrumb" class="text-slate-600 font-semibold line-clamp-1"></span>
+    </nav>
+
+    <div class="rounded-3xl overflow-hidden h-72 md:h-96 mb-8">
+      <img id="b-image" src="" class="w-full h-full object-cover" />
+    </div>
+
+    <span id="b-category" class="text-xs bg-coral/10 text-coral font-bold px-3 py-1 rounded-full"></span>
+
+    <h1 id="b-title" class="text-3xl font-extrabold text-slate-900 mt-4 mb-3 leading-tight"></h1>
+
+    <div class="flex items-center gap-4 text-sm text-slate-400 mb-8 pb-8 border-b border-gray-100">
+      <span><i class="fa fa-user-circle mr-1"></i><span id="b-author"></span></span>
+      <span><i class="fa fa-calendar mr-1"></i><span id="b-date"></span></span>
+    </div>
+
+    <div id="b-content" class="prose prose-slate max-w-none text-slate-600 leading-relaxed space-y-4"></div>
+  </article>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const blogId = window.location.pathname.split('/').pop();
+async function loadBlogPost() {
+  try {
+    const res = await fetch(`/api/blog/${blogId}`);
+    const p   = await res.json();
+    document.getElementById('b-breadcrumb').textContent = p.title;
+    document.getElementById('b-image').src = p.image||'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80';
+    document.getElementById('b-category').textContent = p.category||'Ẩm thực';
+    document.getElementById('b-title').textContent  = p.title;
+    document.getElementById('b-author').textContent = p.author||'GourmetShop';
+    document.getElementById('b-date').textContent   = new Date(p.createdAt||Date.now()).toLocaleDateString('vi-VN');
+    const contentEl = document.getElementById('b-content');
+    // Render content as paragraphs
+    const content = p.content || p.summary || '';
+    contentEl.innerHTML = content.split('\n').filter(l=>l.trim()).map(l=>`<p>${l}</p>`).join('');
+    document.getElementById('blog-loader').classList.add('hidden');
+    document.getElementById('blog-article').classList.remove('hidden');
+  } catch(e) { console.error(e); }
+}
+loadBlogPost();
+</script>
+{% endblock %}

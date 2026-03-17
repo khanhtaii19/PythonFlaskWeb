@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-10">
+  <div id="auth-guard" class="hidden text-center py-20">
+    <div class="text-6xl mb-4">🔒</div>
+    <p class="text-slate-400 font-semibold mb-4">Trang này chỉ dành cho quản trị viên</p>
+    <a href="/" class="inline-block bg-coral text-white font-bold px-6 py-2.5 rounded-xl">Về trang chủ</a>
+  </div>
+
+  <div id="admin-content" class="hidden">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-900">Admin Dashboard</h1>
+        <p class="text-slate-400 text-sm mt-1">Quản lý cửa hàng GourmetShop</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-5 mb-10">
+      {% for icon,label,id,color in [('fa-box','Sản phẩm','stat-products','blue'),('fa-receipt','Đơn hàng','stat-orders','purple'),('fa-users','Người dùng','stat-users','green'),('fa-tag','Danh mục','stat-categories','orange')] %}
+      <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 bg-{{ color }}-50 rounded-xl flex items-center justify-center">
+            <i class="fa {{ icon }} text-{{ color }}-500"></i>
+          </div>
+        </div>
+        <p class="text-2xl font-extrabold text-slate-900" id="{{ id }}">—</p>
+        <p class="text-xs text-slate-400 font-medium mt-0.5">{{ label }}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6 border-b border-gray-100 pb-2">
+      {% for tab,label in [('orders','Đơn hàng'),('products','Sản phẩm'),('users','Người dùng')] %}
+      <button onclick="switchTab('{{ tab }}')" id="tab-{{ tab }}"
+              class="px-5 py-2 rounded-xl text-sm font-bold transition tab-btn
+                     {% if loop.first %}bg-coral text-white{% else %}text-slate-500 hover:bg-gray-50{% endif %}">
+        {{ label }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Orders tab -->
+    <div id="panel-orders" class="tab-panel">
+      <div id="orders-list" class="space-y-3"></div>
+    </div>
+
+    <!-- Products tab -->
+    <div id="panel-products" class="tab-panel hidden">
+      <div id="products-table" class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">Sản phẩm</th>
+              <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">Giá</th>
+              <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">Kho</th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Users tab -->
+    <div id="panel-users" class="tab-panel hidden">
+      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">Người dùng</th>
+              <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">Role</th>
+              <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">Ngày tạo</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const STATUS_MAP = {
+  pending:'Chờ xác nhận', confirmed:'Đã xác nhận', shipping:'Đang giao', delivered:'Đã giao', cancelled:'Đã hủy'
+};
+const STATUS_COLOR = {
+  pending:'bg-yellow-50 text-yellow-700', confirmed:'bg-blue-50 text-blue-700',
+  shipping:'bg-purple-50 text-purple-700', delivered:'bg-green-50 text-green-700', cancelled:'bg-red-50 text-red-600'
+};
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.className = b.className.replace('bg-coral text-white','text-slate-500 hover:bg-gray-50'));
+  document.getElementById(`panel-${name}`).classList.remove('hidden');
+  const btn = document.getElementById(`tab-${name}`);
+  btn.className = btn.className.replace('text-slate-500 hover:bg-gray-50','bg-coral text-white');
+}
+
+async function loadStats() {
+  const [products, orders, users, cats] = await Promise.all([
+    fetch('/api/products?limit=1').then(r=>r.json()),
+    fetch('/api/orders', {headers:authHeaders()}).then(r=>r.json()),
+    fetch('/api/auth/users', {headers:authHeaders()}).then(r=>r.json()),
+    fetch('/api/categories').then(r=>r.json()),
+  ]);
+  document.getElementById('stat-products').textContent   = (products.total||products.length||'—');
+  document.getElementById('stat-orders').textContent     = Array.isArray(orders) ? orders.length : '—';
+  document.getElementById('stat-users').textContent      = Array.isArray(users)  ? users.length  : '—';
+  document.getElementById('stat-categories').textContent = Array.isArray(cats)   ? cats.length   : '—';
+
+  // Render orders
+  if (Array.isArray(orders)) {
+    document.getElementById('orders-list').innerHTML = orders.map(o => `
+      <div class="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-4">
+          <div>
+            <p class="text-xs text-slate-400">Đơn #${o.id}</p>
+            <p class="font-bold text-slate-900 text-sm">${o.shipping?.name||o.userId}</p>
+            <p class="text-xs text-slate-400">${new Date(o.createdAt).toLocaleDateString('vi-VN')}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <span class="font-extrabold text-coral text-sm">${Number(o.total).toLocaleString('vi-VN')}đ</span>
+          <select onchange="updateOrderStatus(${o.id}, this.value)" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-coral ${STATUS_COLOR[o.status]||''}">
+            ${Object.entries(STATUS_MAP).map(([v,l])=>`<option value="${v}" ${o.status===v?'selected':''}>${l}</option>`).join('')}
+          </select>
+        </div>
+      </div>`).join('');
+  }
+
+  // Render products
+  const allP = (await fetch('/api/products?limit=100').then(r=>r.json()));
+  const ps = allP.products || allP;
+  document.getElementById('products-tbody').innerHTML = ps.map(p=>`
+    <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+      <td class="px-5 py-3 flex items-center gap-3">
+        <img src="${p.image}" class="w-10 h-10 rounded-xl object-cover"/>
+        <span class="font-semibold text-slate-900">${p.name}</span>
+      </td>
+      <td class="px-5 py-3 text-coral font-bold">${(p.salePrice||p.price).toLocaleString('vi-VN')}đ</td>
+      <td class="px-5 py-3 font-semibold ${p.stock>0?'text-green-600':'text-red-500'}">${p.stock>0?p.stock:'Hết'}</td>
+    </tr>`).join('');
+
+  // Render users
+  if (Array.isArray(users)) {
+    document.getElementById('users-tbody').innerHTML = users.map(u=>`
+      <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+        <td class="px-5 py-3 flex items-center gap-3">
+          <img src="${u.avatar||`https://ui-avatars.com/api/?name=${u.name}&background=ff5c62&color=fff`}" class="w-9 h-9 rounded-xl object-cover"/>
+          <div>
+            <p class="font-semibold text-slate-900 text-sm">${u.name}</p>
+            <p class="text-xs text-slate-400">${u.email}</p>
+          </div>
+        </td>
+        <td class="px-5 py-3"><span class="text-xs font-bold px-2 py-1 rounded-full ${u.role==='admin'?'bg-coral/10 text-coral':'bg-gray-100 text-slate-500'}">${u.role}</span></td>
+        <td class="px-5 py-3 text-xs text-slate-400">${new Date(u.createdAt||Date.now()).toLocaleDateString('vi-VN')}</td>
+      </tr>`).join('');
+  }
+}
+
+async function updateOrderStatus(orderId, status) {
+  await fetch(`/api/orders/${orderId}/status`, {
+    method: 'PATCH', headers: authHeaders(),
+    body: JSON.stringify({ status })
+  });
+  showToast('Đã cập nhật trạng thái đơn hàng');
+}
+
+// Guard
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.USER || window.USER.role !== 'admin') {
+    document.getElementById('auth-guard').classList.remove('hidden');
+  } else {
+    document.getElementById('admin-content').classList.remove('hidden');
+    loadStats();
+  }
+});
+</script>
+{% endblock %}

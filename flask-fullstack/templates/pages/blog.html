@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-10">
+  <!-- Hero -->
+  <div class="text-center mb-12">
+    <span class="inline-block bg-coral/10 text-coral font-bold text-xs px-4 py-1.5 rounded-full mb-4 uppercase tracking-wider">📰 Blog ẩm thực</span>
+    <h1 class="text-4xl font-extrabold text-slate-900 mb-3">Cẩm nang bếp núc</h1>
+    <p class="text-slate-400 text-lg max-w-2xl mx-auto">Công thức, mẹo nấu ăn và câu chuyện ẩm thực từ đội ngũ GourmetShop</p>
+  </div>
+
+  <!-- Loader -->
+  <div id="blog-loader" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    {% for i in range(6) %}<div class="animate-pulse bg-gray-100 rounded-2xl h-72"></div>{% endfor %}
+  </div>
+
+  <div id="blog-grid" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadBlog() {
+  try {
+    const res  = await fetch('/api/blog');
+    const data = await res.json();
+    const posts = data.posts || data;
+    document.getElementById('blog-loader').remove();
+    const grid = document.getElementById('blog-grid');
+    grid.innerHTML = posts.map((p,i) => `
+      <a href="/blog/${p.id}" class="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition ${i===0?'md:col-span-3':''} block">
+        <div class="${i===0?'h-72 md:h-96':'h-52'} overflow-hidden">
+          <img src="${p.image||'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80'}"
+               class="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+        </div>
+        <div class="${i===0?'p-8':'p-5'}">
+          <span class="text-xs bg-coral/10 text-coral font-bold px-2 py-1 rounded-lg">${p.category||'Ẩm thực'}</span>
+          <h2 class="${i===0?'text-2xl':'text-base'} font-extrabold text-slate-900 mt-3 mb-2 line-clamp-2 group-hover:text-coral transition">${p.title}</h2>
+          <p class="text-slate-400 text-sm line-clamp-2">${p.summary||''}</p>
+          <p class="text-xs text-slate-300 mt-3 font-medium">${new Date(p.createdAt||Date.now()).toLocaleDateString('vi-VN')}</p>
+        </div>
+      </a>`).join('');
+    grid.classList.remove('hidden');
+  } catch(e) { console.error(e); }
+}
+loadBlog();
+</script>
+{% endblock %}
