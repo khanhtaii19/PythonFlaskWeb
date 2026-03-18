@@ -1,10 +1,11 @@
 from flask import Flask, render_template, redirect, url_for
 from flask_cors import CORS
 from src.config.database import init_db
+from src.config import CORS_ORIGIN
 from src.routes.routes import register_routes
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": [o.strip() for o in CORS_ORIGIN.split(",") if o.strip()]}})
 
 # ── Init DB ─────────────────────────────────────────────────────────────────
 with app.app_context():
